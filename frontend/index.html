@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BAHACKS - Flood Detection & Safe Route Navigation</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+        
+        #app {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Sidebar */
+        #sidebar {
+            width: 400px;
+            background: #f5f5f5;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+        
+        .sidebar-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .sidebar-section {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .sidebar-section h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        /* Routing Controls */
+        .routing-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .input-group label {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .input-group input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+        }
+        
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+        
+        /* Legend */
+        .legend {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        
+        .legend-color.green { background: #48bb78; }
+        .legend-color.yellow { background: #ecc94b; }
+        .legend-color.orange { background: #ed8936; }
+        .legend-color.red { background: #f56565; }
+        
+        /* Reports List */
+        .reports-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .report-item {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            border-left: 4px solid #ccc;
+        }
+        
+        .report-item.pending { border-left-color: #ecc94b; }
+        .report-item.confirmed { border-left-color: #ed8936; }
+        .report-item.verified { border-left-color: #f56565; }
+        
+        .report-item h4 {
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        
+        .report-item p {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        /* Status Bar */
+        #status-bar {
+            background: #2d3748;
+            color: white;
+            padding: 8px 15px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* Map */
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        
+        /* Reroute Banner */
+        #reroute-banner {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ed8936 0%, #f56565 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1500;
+            animation: pulse 1s infinite;
+        }
+        
+        #reroute-banner.active {
+            display: block;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        /* Turn-by-turn panel */
+        #turn-by-turn {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .instruction {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+        
+        .instruction:last-child {
+            border-bottom: none;
+        }
+        
+        .instruction strong {
+            color: #667eea;
+        }
+        
+        /* Admin Panel Toggle */
+        #admin-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #2d3748;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        
+        #admin-panel {
+            display: none;
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 350px;
+        }
+        
+        #admin-panel.active {
+            display: block;
+        }
+        
+        .sensor-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .sensor-item {
+            background: #f5f5f5;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .sensor-item button {
+            padding: 3px 8px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <h1>🌊 BAHACKS</h1>
+                <p>Bayanihan Hacks - Flood Detection & Safe Navigation</p>
+            </div>
+            
+            <!-- Routing Section -->
+            <div class="sidebar-section">
+                <h3>📍 Route Planning</h3>
+                <div class="routing-controls">
+                    <div class="input-group">
+                        <label>Start (Lat, Lon)</label>
+                        <input type="text" id="start-coords" placeholder="Click map or enter coordinates">
+                    </div>
+                    <div class="input-group">
+                        <label>Destination (Lat, Lon)</label>
+                        <input type="text" id="end-coords" placeholder="Click map or enter coordinates">
+                    </div>
+                    <button class="btn-primary" onclick="calculateRoute()">Calculate Safe Route</button>
+                    <button class="btn-danger" onclick="clearRoute()">Clear Route</button>
+                </div>
+            </div>
+            
+            <!-- Turn-by-turn Instructions -->
+            <div class="sidebar-section" id="directions-section" style="display: none;">
+                <h3>🧭 Turn-by-Turn Directions</h3>
+                <div id="turn-by-turn"></div>
+            </div>
+            
+            <!-- Legend -->
+            <div class="sidebar-section">
+                <h3>🎨 Flood Level Legend (MMDA)</h3>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color green"></div>
+                        <span>Green (0-30cm)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color yellow"></div>
+                        <span>Yellow (30-60cm)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color orange"></div>
+                        <span>Orange (60-100cm)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color red"></div>
+                        <span>Red (>100cm)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Reports -->
+            <div class="sidebar-section">
+                <h3>📢 Recent Crowd Reports</h3>
+                <div class="reports-list" id="reports-list">
+                    <p style="color: #999; font-size: 12px;">Loading reports...</p>
+                </div>
+            </div>
+            
+            <!-- Report Button -->
+            <div class="sidebar-section">
+                <button class="btn-success" style="width: 100%;" onclick="openReportModal()">
+                    🚨 Report Flood Here
+                </button>
+            </div>
+            
+            <!-- Status Bar -->
+            <div id="status-bar">
+                <span id="system-status">● System Online</span>
+                <span id="last-update">Last update: --</span>
+            </div>
+        </div>
+        
+        <!-- Map -->
+        <div id="map"></div>
+    </div>
+    
+    <!-- Reroute Banner -->
+    <div id="reroute-banner">
+        🌊 New flood detected - Finding safe alternative route...
+    </div>
+    
+    <!-- Report Modal -->
+    <div class="modal" id="report-modal">
+        <div class="modal-content">
+            <h2>🚨 Report Flood</h2>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" id="report-location" readonly>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="report-description" placeholder="Describe the flood situation..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Your Name (Optional)</label>
+                <input type="text" id="reporter-name" placeholder="Anonymous">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-danger" onclick="closeReportModal()">Cancel</button>
+                <button class="btn-success" onclick="submitReport()">Submit Report</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Toggle -->
+    <div id="admin-toggle" onclick="toggleAdminPanel()">⚙️ Admin</div>
+    
+    <!-- Admin Panel -->
+    <div id="admin-panel">
+        <h3>⚙️ Admin Panel</h3>
+        <div class="form-group" style="margin-top: 10px;">
+            <label>Add New Sensor</label>
+            <input type="text" id="admin-device-id" placeholder="Device ID" style="margin-bottom: 5px;">
+            <input type="text" id="admin-sensor-name" placeholder="Sensor Name" style="margin-bottom: 5px;">
+            <input type="text" id="admin-sensor-lat" placeholder="Latitude" style="margin-bottom: 5px;">
+            <input type="text" id="admin-sensor-lon" placeholder="Longitude" style="margin-bottom: 5px;">
+            <input type="text" id="admin-location-name" placeholder="Location Name">
+            <button class="btn-primary" style="width: 100%; margin-top: 10px;" onclick="addSensor()">Add Sensor</button>
+        </div>
+        <div class="sensor-list" id="admin-sensor-list"></div>
+    </div>
+    
+    <!-- Audio for reroute alert -->
+    <audio id="reroute-sound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=" type="audio/wav">
+    </audio>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    
+    <!-- App JS -->
+    <script src="app.js"></script>
+</body>
+</html>

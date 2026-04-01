@@ -1,0 +1,58 @@
+{
+  "service": {
+    "http_port": 8002,
+    "json_logging": true,
+    "logging_path": "/var/log/valhalla/valhalla.log",
+    "file_logger": "info"
+  },
+  "tile_dir": "/custom_files/valhalla_tiles",
+  "tile_extract": "/custom_files/valhalla_tiles.tar",
+  "elevation": "/custom_files/elevation",
+  "localedir": "/usr/share/locale",
+  "locales": ["en-US"],
+  "use_direction_on_edge": true,
+  "service_factors": {
+    "auto": 1.0,
+    "bicycle": 1.0,
+    "pedestrian": 1.0,
+    "motor_scooter": 1.0,
+    "bus": 1.0,
+    "truck": 1.0
+  },
+  "max_reserved_labels_count": 256,
+  "thread_pool_size": 4,
+  "data_processing": {
+    "use_admin_db": false,
+    "use_restin_headings": true,
+    "use_turn_restrictions": true,
+    "infer_internal_intersections": true,
+    "infer_turn_channels": true,
+    "allow_alt_name": true,
+    "edge_marking": true,
+    "internal_mask": 3145728,
+    "shortcuts": true,
+    "shortcut_depth": 3
+  },
+  "meili": {
+    "search_radius": 50,
+    "route": true,
+    "turn_penalty_factor": 120,
+    "beta": 3,
+    "breakage_distance": 25,
+    "geometry_match": true,
+    "turn_candidates": true,
+    "supress_inner_edges": true,
+    "match_accuracy": 20,
+    "search_cutoff": 35,
+    "transition_cutoff": 50,
+    "candidate_density": 200,
+    "max_route_time_factor": 1.5,
+    "max_route_length_factor": 2.0
+  },
+  "odin": {
+    "use_instructions": true,
+    "use_named_roads": true,
+    "use_refine_turn_angles": true,
+    "use_continue_straight": true
+  }
+}
