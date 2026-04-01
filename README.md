@@ -1,6 +1,5 @@
-# BAHACKS - Complete Setup Guide
 
-## Bayanihan Hacks: IoT-based Real-time Flood Detection & Safe Route Navigation
+
 
 ---
 
